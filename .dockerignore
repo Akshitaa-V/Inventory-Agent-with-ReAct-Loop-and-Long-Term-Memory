@@ -1,0 +1,44 @@
+# Build context hygiene.
+#
+# Measured before this file existed: 426 MB sent to the daemon on every
+# build, 418 MB of it a local Prometheus install nothing in the Dockerfile
+# ever copies. With this file the context is a few MB.
+#
+# Keep .containerignore in sync -- Podman reads that one when present.
+
+# Never send secrets to the daemon. .env carries the live INNKUBE_TOKEN. It
+# is not COPYd into the image, but it IS uploaded as part of the context.
+.env
+.env.*
+*.env
+
+.git/
+.gitignore
+.gitattributes
+.gitlab-ci.yml
+
+# Local artefacts. None of these is referenced by a COPY instruction.
+prometheus_bin/
+daily_reports/
+latest_logs/
+data/
+workspace/
+diagrams/
+tests/
+
+# Python / tooling caches.
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+env/
+
+# Documentation. No COPY instruction needs a Markdown file.
+*.md

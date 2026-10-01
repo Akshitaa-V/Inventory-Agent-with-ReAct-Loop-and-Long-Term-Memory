@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Agentic Inventory Management System",
+    "output": "runtime-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "main-request", "label": "Request path", "focus": ["user", "cli", "react-loop", "llm-api", "tool-registry", "fs-tools"], "note": "Primary user request flows from input through the ReAct loop to tool execution." },
+      { "id": "memory-layer", "label": "Memory systems", "focus": ["tool-registry", "receipt-memory", "ltm-chromadb", "fs-tools"], "note": "Receipt deduplication and long-term semantic memory." },
+      { "id": "mcp-external", "label": "MCP & external services", "focus": ["tool-registry", "recall-mcp", "ocr-mcp", "cpsc-api"], "note": "MCP servers bridge external APIs and OCR into the agent." }
+    ]
+  },
+  "components": [
+    { "id": "user", "type": "external", "label": "User", "sublabel": "CLI or Dashboard", "pos": [100, 290], "size": [110, 60] },
+    { "id": "cli", "type": "frontend", "label": "CLI", "sublabel": "main.py", "pos": [280, 200], "size": [120, 60] },
+    { "id": "dashboard", "type": "frontend", "label": "Streamlit", "sublabel": "dashboard.py", "pos": [280, 380], "size": [120, 60] },
+    { "id": "react-loop", "type": "backend", "label": "ReAct Loop", "sublabel": "loop.py", "pos": [460, 290], "size": [130, 60], "tag": "max 15 iterations" },
+    { "id": "llm-api", "type": "external", "label": "InnKube LLM", "sublabel": "gemma4-31b-it", "pos": [460, 120], "size": [130, 60], "tag": "OpenAI-compat" },
+    { "id": "tool-registry", "type": "backend", "label": "Tool Registry", "sublabel": "tool_registry.py", "pos": [680, 290], "size": [130, 60], "tag": "sandboxed dispatch" },
+    { "id": "fs-tools", "type": "backend", "label": "File Tools", "sublabel": "create/read/modify", "pos": [520, 480], "size": [130, 60] },
+    { "id": "receipt-memory", "type": "database", "label": "Receipt Memory", "sublabel": "memory.json", "pos": [890, 180], "size": [130, 60], "tag": "SHA-256 dedup" },
+    { "id": "ltm-chromadb", "type": "database", "label": "Long-Term Memory", "sublabel": "ChromaDB", "pos": [890, 320], "size": [130, 60], "tag": "3 collections" },
+    { "id": "recall-mcp", "type": "messagebus", "label": "Recall MCP", "sublabel": "stdio transport", "pos": [890, 460], "size": [130, 60] },
+    { "id": "cpsc-api", "type": "external", "label": "CPSC API", "sublabel": "saferproducts.gov", "pos": [1100, 460], "size": [130, 60] },
+    { "id": "ocr-mcp", "type": "messagebus", "label": "OCR MCP", "sublabel": "Tesseract + poppler", "pos": [680, 560], "size": [130, 60] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Agent Runtime", "wraps": ["cli", "dashboard", "react-loop", "tool-registry", "fs-tools", "receipt-memory", "ltm-chromadb", "recall-mcp", "ocr-mcp"] },
+    { "kind": "security-group", "label": "Workspace Sandbox", "wraps": ["fs-tools", "receipt-memory"] }
+  ],
+  "connections": [
+    { "id": "user-cli", "from": "user", "to": "cli", "label": "commands", "fromSide": "right", "toSide": "left", "route": "orthogonal-h" },
+    { "id": "user-dashboard", "from": "user", "to": "dashboard", "label": "web UI", "variant": "dashed", "fromSide": "right", "toSide": "left", "route": "orthogonal-h" },
+    { "id": "cli-react", "from": "cli", "to": "react-loop" },
+    { "id": "dashboard-react", "from": "dashboard", "to": "react-loop" },
+    { "id": "react-llm", "from": "react-loop", "to": "llm-api", "label": "HTTP /chat/completions", "variant": "emphasis", "fromSide": "top", "toSide": "bottom" },
+    { "id": "react-tools", "from": "react-loop", "to": "tool-registry", "label": "dispatch tool calls", "variant": "emphasis", "labelAt": [615, 364] },
+    { "id": "registry-fs", "from": "tool-registry", "to": "fs-tools", "label": "file ops", "fromSide": "bottom", "toSide": "top", "labelAt": [650, 450] },
+    { "id": "registry-receipt", "from": "tool-registry", "to": "receipt-memory", "label": "dedup / mark", "fromSide": "top", "toSide": "left", "labelAt": [790, 240] },
+    { "id": "registry-ltm", "from": "tool-registry", "to": "ltm-chromadb", "label": "remember / recall", "fromSide": "right", "toSide": "left", "labelAt": [860, 534] },
+    { "id": "registry-recall", "from": "tool-registry", "to": "recall-mcp", "label": "check recall", "variant": "dashed", "fromSide": "right", "toSide": "top", "labelAt": [850, 280] },
+    { "id": "recall-cpsc", "from": "recall-mcp", "to": "cpsc-api", "label": "REST", "variant": "dashed" },
+    { "id": "registry-ocr", "from": "tool-registry", "to": "ocr-mcp", "label": "extract text", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelAt": [725, 520] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Interfaces", "items": ["CLI (main.py) for interactive use", "Streamlit dashboard for visual access"] },
+    { "dot": "emerald", "title": "Core Agent", "items": ["ReAct loop with 15-iteration guard", "LLM calls via InnKube (gemma4-31b-it)", "Tool registry with path sandboxing"] },
+    { "dot": "violet", "title": "Memory", "items": ["Receipt Memory (JSON, SHA-256 dedup)", "Long-Term Memory (ChromaDB, semantic search)", "Session summaries on exit"] },
+    { "dot": "amber", "title": "MCP Extensions", "items": ["Recall MCP queries CPSC safety database", "OCR MCP runs Tesseract on images/PDFs", "stdio transport, configurable per-server"] }
+  ]
+}

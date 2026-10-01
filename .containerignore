@@ -1,0 +1,36 @@
+# Podman reads .containerignore in preference to .dockerignore when both are
+# present. Keep the two identical -- they are the same filter, one per engine.
+#
+# See .dockerignore for the reasoning behind each entry.
+
+.env
+.env.*
+*.env
+
+.git/
+.gitignore
+.gitattributes
+.gitlab-ci.yml
+
+prometheus_bin/
+daily_reports/
+latest_logs/
+data/
+workspace/
+diagrams/
+tests/
+
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+venv/
+.venv/
+env/
+
+*.md

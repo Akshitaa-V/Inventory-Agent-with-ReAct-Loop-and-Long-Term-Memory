@@ -1,0 +1,16 @@
+requests
+pytest
+mcp==1.29.1
+pytesseract
+Pillow
+tabulate
+numpy<2
+chromadb
+streamlit
+pandas
+qrcode==8.2
+zxing-cpp==3.1.1
+prometheus_client
+plotly
+streamlit-autorefresh
+tiktoken

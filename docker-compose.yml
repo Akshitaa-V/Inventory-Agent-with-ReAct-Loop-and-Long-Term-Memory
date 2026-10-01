@@ -1,0 +1,105 @@
+# One image for every service that runs project code. `build:` appears once;
+# `agent` and `dashboard` both resolve to `inventory-agent`, which is the same
+# tag `podman build -t inventory-agent .` produces in the README. Previously
+# each service said `build: .`, so Compose built the identical Dockerfile
+# twice into two differently-named images that could drift apart.
+x-agent-image: &agent-image
+  image: inventory-agent
+  build:
+    context: .
+    dockerfile: Dockerfile
+
+services:
+  agent:
+    <<: *agent-image
+    # Pinned at 9000 to match the scrape target in prometheus.yml. Deliberately
+    # NOT configurable: Prometheus reads plain YAML and cannot follow an
+    # environment variable, so a port settable in one place only turns a
+    # mismatch into a silently empty dashboard instead of an error.
+    ports:
+      - "9000:9000"
+    environment:
+      - INNKUBE_TOKEN=${INNKUBE_TOKEN}
+    volumes:
+      # ChromaDB lives in a NAMED VOLUME, never in a ./data bind mount. A bind
+      # mount hands the directory's ownership to the host, and SQLite does not
+      # tolerate Docker Desktop's file-sharing layer -- both of which made
+      # ChromaDB fail to open its database on other machines.
+      - memory-data:/app/data
+      - ./workspace:/app/workspace
+    # The agent is an interactive REPL: it blocks on input() and only exits
+    # when the user types `exit`. Without stdin it would read EOF on the first
+    # prompt and shut down immediately.
+    stdin_open: true
+    tty: true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request as u; u.urlopen('http://127.0.0.1:9000/metrics', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  dashboard:
+    <<: *agent-image
+    command: streamlit run dashboard.py --server.port=8501 --server.address=0.0.0.0
+    ports:
+      - "8501:8501"
+    volumes:
+      # The SAME named volume as `agent`. dashboard.py builds the identical
+      # Memory(config.ltm_db_path); without this mount it silently got its own
+      # private database inside the container layer -- a second, throwaway copy
+      # of the agent's memory that vanished on every recreate and never showed
+      # up anywhere on the host, which is what made the dashboard appear to
+      # have lost everything.
+      - memory-data:/app/data
+      - ./workspace:/app/workspace
+    environment:
+      - INNKUBE_TOKEN=${INNKUBE_TOKEN}
+      - PROMETHEUS_URL=http://prometheus:9090
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request as u; u.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  prometheus:
+    image: docker.io/prom/prometheus:v3.4.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    # Deliberately NO depends_on `agent`. The canonical flow starts Prometheus
+    # and the dashboard detached, then attaches the agent with
+    # `docker compose run --use-aliases agent`. Making Prometheus depend on the
+    # agent *service* would force a second, idle agent to start alongside it,
+    # and two containers sharing the `agent` DNS name split the scraped
+    # metrics between them.
+    healthcheck:
+      test:
+        ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+volumes:
+  # Named, not a bind mount: ownership is seeded from the image (agent-owned)
+  # and survives `compose down`, so the memory database persists across
+  # restarts without the host-directory ownership problem.
+  memory-data:

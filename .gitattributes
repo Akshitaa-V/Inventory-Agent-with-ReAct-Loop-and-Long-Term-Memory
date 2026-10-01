@@ -1,0 +1,13 @@
+# core.autocrlf=true -- the default git ships with on Windows -- rewrites text
+# files to CRLF when checking them out. For most files that is harmless, but a
+# shell script is not most files: a shebang ending in \r makes execve fail with
+# "bad interpreter" before a single line of our code runs, and the error points
+# at the image rather than at the checkout.
+#
+# docker/entrypoint.sh is the only executable-text file in this repository, so
+# that is the only rule here. Deliberately scoped: forcing eol on *.py or *.yml
+# would show every existing file as modified on Windows for no benefit.
+*.sh text eol=lf
+
+# Belt and braces for anyone who edits the script outside git: the Dockerfile
+# also strips CR on COPY, so a CRLF working tree still produces a working image.

@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: "agent-metrics"
+    static_configs:
+      # 9000 is fixed in TWO places: here and docker-compose.yml. Prometheus
+      # reads plain YAML and cannot follow an environment variable, so making
+      # the port configurable in one place only turns a typo into a dashboard
+      # that is silently empty while everything else looks healthy. Change
+      # both or neither.
+      #
+      # The hostname must be `agent`, and the scraped container must carry
+      # that network alias -- hence `--use-aliases` in the README's run
+      # command. Without the flag `docker compose run` gets a generated name
+      # like `group-2-agent-run-x7k2` and this target resolves to nothing.
+      - targets: ["agent:9000"]

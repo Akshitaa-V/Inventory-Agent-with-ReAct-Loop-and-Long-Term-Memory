@@ -1,0 +1,65 @@
+{
+  "llm": {
+    "base_url": "https://llms.innkube.fim.uni-passau.de",
+    "endpoint": "/chat/completions",
+    "model": "qwen-agentworld-35b-a3b",
+    "temperature": 0.7,
+    "context_window": 262144
+  },
+  "max_iterations": 15,
+  "workspace_root": "./workspace",
+  "ltm_db_path": "data/chroma",
+  "mcp_servers": {
+    "recall": {
+      "enabled": true
+    },
+    "ocr": {
+      "enabled": true,
+      "server_script": null
+    },
+    "qr": {
+      "enabled": true
+    }
+  },
+  "permissions": {
+    "default": "allow",
+    "tools": {
+      "forget_fact": "deny",
+      "ocr_extract_text": "require-user-confirmation",
+      "ocr_extract_text_from_pdf": "require-user-confirmation",
+      "check_product_recall": "require-user-confirmation"
+    }
+  },
+  "agents": {
+    "max_delegation_depth": 1,
+    "max_iterations": 8,
+    "roles": {
+      "inventory-auditor": {
+        "description": "Answers a question about what is already recorded in inventory.md -- whether an item is present, what was paid, where a figure came from, whether two entries are duplicates. Use it instead of reading the whole inventory yourself when you need one fact out of a long file.",
+        "instructions": "You are an inventory auditor. You are given one question about the existing inventory. Read inventory.md, search it as needed, and reply with the answer and the entries it rests on -- nothing else. If the inventory does not contain the answer, say so plainly rather than guessing. You do not add, change or remove anything: you only read.",
+        "max_iterations": 6,
+        "permissions": {
+          "default": "deny",
+          "tools": {
+            "read": "allow",
+            "read_many": "allow",
+            "search": "allow",
+            "navigate": "allow"
+          }
+        }
+      },
+      "qr-labeller": {
+        "description": "Produces a scannable QR label for an inventory item, a link, a contact card or guest Wi-Fi credentials, choosing the right payload format and a sensible filename. Use it when an item needs a physical asset tag.",
+        "instructions": "You are a labelling specialist. You are given what the label should encode. Check which payload types are available, pick the one that fits, and generate the code under a lowercase hyphenated filename ending in .png. Reply with the filename you wrote and what it encodes -- nothing else.",
+        "max_iterations": 5,
+        "permissions": {
+          "default": "deny",
+          "tools": {
+            "generate_qr_code": "allow",
+            "qr_list_payload_types": "allow"
+          }
+        }
+      }
+    }
+  }
+}
