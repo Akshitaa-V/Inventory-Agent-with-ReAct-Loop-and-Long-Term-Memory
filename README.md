@@ -1,4 +1,4 @@
-# Group 2 — Agentic Harness Project
+ Agentic Harness Project
 
 *AI Engineering Lab, SoSe 2026*
 
