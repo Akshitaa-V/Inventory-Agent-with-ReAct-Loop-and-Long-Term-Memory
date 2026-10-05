@@ -56,6 +56,5 @@ CODE_REVIEW_FINDINGS.md
 prometheus_bin/
 prometheus-*.zip
 git_ignore_files/AI_Engineering_Lab_2026.pdf
-CLAUDE.md
 Week3_Permissions.md
 data/run_log.jsonl
